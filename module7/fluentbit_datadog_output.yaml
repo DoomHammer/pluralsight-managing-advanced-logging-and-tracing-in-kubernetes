@@ -1,0 +1,16 @@
+apiVersion: fluentbit.fluent.io/v1alpha2
+kind: ClusterOutput
+metadata:
+  name: cluster-fluentbit-output-datadog
+  labels:
+    fluentbit.fluent.io/enabled: "true"
+    fluentbit.fluent.io/mode: "k8s"
+spec:
+  matchRegex: (?:kube)\.(.*)
+  datadog:
+    host: http-intake.logs.datadoghq.eu
+    apikey: PROVIDE_YOUR_KEY_HERE
+    include_tag_key: true
+    tag_key: tag
+    dd_service: Carved Rock Fitness
+    dd_source: Fluentbit

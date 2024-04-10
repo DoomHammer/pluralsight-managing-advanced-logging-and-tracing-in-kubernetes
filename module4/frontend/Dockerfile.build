@@ -1,0 +1,17 @@
+FROM node:20.4-alpine3.18 AS buildfront
+
+COPY package.json yarn.lock .yarnrc /app/
+
+WORKDIR /app
+
+RUN yarn
+
+COPY . /app/
+
+EXPOSE 3000
+
+RUN ["npx", "react-scripts", "build"]
+
+FROM src-workoutgateway
+
+COPY --from=buildfront /app/build/ /app/static/

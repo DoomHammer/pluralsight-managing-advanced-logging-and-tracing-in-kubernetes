@@ -1,0 +1,339 @@
+---
+###
+# Run controller
+###
+apiVersion: v1
+kind: Service
+metadata:
+  name: carved-rock-fitness-runcontroller
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-runcontroller
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: run-controller
+    app.kubernetes.io/name: carved-rock-fitness-runcontroller
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    opentelemetry.io/name: carved-rock-fitness-runcontroller
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carved-rock-fitness-runcontroller
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-runcontroller
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: run-controller
+    app.kubernetes.io/name: carved-rock-fitness-runcontroller
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  selector:
+    matchLabels:
+      opentelemetry.io/name: carved-rock-fitness-runcontroller
+  template:
+    metadata:
+      labels:
+        opentelemetry.io/name: carved-rock-fitness-runcontroller
+        app.kubernetes.io/instance: carved-rock-fitness
+        app.kubernetes.io/component: run-controller
+        app.kubernetes.io/name: carved-rock-fitness-runcontroller
+    spec:
+      containers:
+      - name: run-controller
+        image: docker.io/doomhammer/carvedrock:2.0-m2d2-runcontroller
+        imagePullPolicy: Always
+        env:
+        - name: REDIS_HOST
+          value: "carved-rock-fitness-redis"
+        - name: REDIS_PASSWORD
+          value:
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Always
+      initContainers:
+        - command:
+          - sh
+          - -c
+          - until nc -z -v -w30 carved-rock-fitness-redis 6379; do echo waiting
+            for redis; sleep 2; done;
+          image: busybox:latest
+          name: wait-for-redis
+---
+###
+# Redis
+###
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: carved-rock-fitness
+  labels:
+    opentelemetry.io/name: carved-rock-fitness
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/name: carved-rock-fitness
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carved-rock-fitness-redis
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-redis
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/name: carved-rock-fitness-redis
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      opentelemetry.io/name: carved-rock-fitness-redis
+  template:
+    metadata:
+      labels:
+        opentelemetry.io/name: carved-rock-fitness-redis
+        app.kubernetes.io/instance: carved-rock-fitness
+        app.kubernetes.io/component: redis
+        app.kubernetes.io/name: carved-rock-fitness-redis
+    spec:
+      serviceAccountName: carved-rock-fitness
+      containers:
+        - name: redis
+          image: 'redis:7.2-alpine'
+          imagePullPolicy: IfNotPresent
+          ports:
+          - containerPort: 6379
+            name: redis
+          resources:
+            limits:
+              memory: 20Mi
+          securityContext:
+            runAsGroup: 1000
+            runAsNonRoot: true
+            runAsUser: 999
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carved-rock-fitness-redis
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-redis
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: redis
+    app.kubernetes.io/name: carved-rock-fitness-redis
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      name: redis
+      targetPort: 6379
+  selector:
+    opentelemetry.io/name: carved-rock-fitness-redis
+---
+###
+# Workout gateway
+###
+apiVersion: v1
+kind: Service
+metadata:
+  name: carved-rock-fitness-workoutgateway
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-workoutgateway
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: workout-gateway
+    app.kubernetes.io/name: carved-rock-fitness-workoutgateway
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    opentelemetry.io/name: carved-rock-fitness-workoutgateway
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carved-rock-fitness-workoutgateway
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-workoutgateway
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: workout-gateway
+    app.kubernetes.io/name: carved-rock-fitness-workoutgateway
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  selector:
+    matchLabels:
+      opentelemetry.io/name: carved-rock-fitness-workoutgateway
+  template:
+    metadata:
+      labels:
+        opentelemetry.io/name: carved-rock-fitness-workoutgateway
+        app.kubernetes.io/instance: carved-rock-fitness
+        app.kubernetes.io/component: redis
+        app.kubernetes.io/name: carved-rock-fitness-workoutgateway
+    spec:
+      containers:
+      - name: workout-gateway
+        image: docker.io/doomhammer/carvedrock:2.0-m2d2-workoutgateway
+        imagePullPolicy: Always
+        env:
+        - name: RUN_CONTROLLER_URL
+          value: http://carved-rock-fitness-runcontroller:8080
+        ports:
+          - name: http
+            containerPort: 8000
+            protocol: TCP
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Always
+---
+###
+# Front end
+###
+apiVersion: v1
+kind: Service
+metadata:
+  name: carved-rock-fitness-frontend
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-frontend
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: front-end
+    app.kubernetes.io/name: carved-rock-fitness-frontend
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3000
+    protocol: TCP
+    targetPort: 3000
+  selector:
+    opentelemetry.io/name: carved-rock-fitness-frontend
+  sessionAffinity: None
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carved-rock-fitness-frontend
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-frontend
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: front-end
+    app.kubernetes.io/name: carved-rock-fitness-frontend
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  selector:
+    matchLabels:
+      opentelemetry.io/name: carved-rock-fitness-frontend
+  template:
+    metadata:
+      labels:
+        opentelemetry.io/name: carved-rock-fitness-frontend
+        app.kubernetes.io/instance: carved-rock-fitness
+        app.kubernetes.io/component: front-end
+        app.kubernetes.io/name: carved-rock-fitness-frontend
+    spec:
+      containers:
+      - name: front-end
+        image: docker.io/doomhammer/carvedrock:2.0-m2d2-frontend
+        imagePullPolicy: Always
+        env:
+        - name: RUN_CONTROLLER_URL
+          value: http://runcontroller:8080
+        - name: PORT
+          value: "3000"
+        ports:
+          - name: http
+            containerPort: 3000
+            protocol: TCP
+      imagePullSecrets:
+      - name: regcred
+---
+###
+# Envoy
+###
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: carved-rock-fitness-frontendproxy
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-frontendproxy
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: frontendproxy
+    app.kubernetes.io/name: carved-rock-fitness-frontendproxy
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      opentelemetry.io/name: carved-rock-fitness-frontendproxy
+  template:
+    metadata:
+      labels:
+        opentelemetry.io/name: carved-rock-fitness-frontendproxy
+        app.kubernetes.io/instance: carved-rock-fitness
+        app.kubernetes.io/component: frontendproxy
+        app.kubernetes.io/name: carved-rock-fitness-frontendproxy
+    spec:
+      serviceAccountName: carved-rock-fitness
+      containers:
+        - name: frontendproxy
+          image: docker.io/doomhammer/carvedrock:2.0-m2d2-frontendproxy
+          imagePullPolicy: Always
+          ports:
+          - containerPort: 8080
+            name: service
+          env:
+          - name: ENVOY_PORT
+            value: "8080"
+          - name: FRONTEND_PORT
+            value: "3000"
+          - name: FRONTEND_HOST
+            value: 'carved-rock-fitness-frontend'
+          - name: WORKOUTGATEWAY_PORT
+            value: "8000"
+          - name: WORKOUTGATEWAY_HOST
+            value: 'carved-rock-fitness-workoutgateway'
+          resources:
+            limits:
+              memory: 50Mi
+          securityContext:
+            runAsGroup: 101
+            runAsNonRoot: true
+            runAsUser: 101
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: carved-rock-fitness-frontendproxy
+  labels:
+    opentelemetry.io/name: carved-rock-fitness-frontendproxy
+    app.kubernetes.io/instance: carved-rock-fitness
+    app.kubernetes.io/component: frontendproxy
+    app.kubernetes.io/name: carved-rock-fitness-frontendproxy
+    app.kubernetes.io/version: "2.0.0"
+    app.kubernetes.io/part-of: carved-rock-fitness
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8080
+      name: tcp-service
+      targetPort: 8080
+  selector:
+    opentelemetry.io/name: carved-rock-fitness-frontendproxy

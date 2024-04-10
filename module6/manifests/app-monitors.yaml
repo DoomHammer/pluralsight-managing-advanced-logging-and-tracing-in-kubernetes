@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: carved-rock-fitness-workoutgateway
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: carved-rock-fitness-workoutgateway
+  namespaceSelector:
+    matchNames:
+    - default
+  endpoints:
+    - port: web
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: carved-rock-fitness-runcontroller
+  namespace: observability
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: carved-rock-fitness-runcontroller
+  namespaceSelector:
+    matchNames:
+    - default
+  endpoints:
+    - port: web
